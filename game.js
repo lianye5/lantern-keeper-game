@@ -5,8 +5,11 @@ const ctx = canvas.getContext("2d");
 const ui = {
   score: document.getElementById("scoreValue"), combo: document.getElementById("comboValue"), best: document.getElementById("bestValue"),
   progress: document.getElementById("progressFill"), lifePips: [...document.querySelectorAll("#lifePips i")],
-  start: document.getElementById("startOverlay"), pause: document.getElementById("pauseOverlay"), end: document.getElementById("endOverlay"),
-  startButton: document.getElementById("startButton"), pauseButton: document.getElementById("pauseButton"),
+  homeScreen: document.getElementById("homeScreen"), gameScreen: document.getElementById("gameScreen"),
+  homeStartButton: document.getElementById("homeStartButton"), homeButton: document.getElementById("homeButton"),
+  homeBest: document.getElementById("homeBestValue"), leaderboard: document.getElementById("leaderboardList"),
+  emptyLeaderboard: document.getElementById("emptyLeaderboard"), pause: document.getElementById("pauseOverlay"), end: document.getElementById("endOverlay"),
+  pauseButton: document.getElementById("pauseButton"),
   resumeButton: document.getElementById("resumeButton"), restartButton: document.getElementById("restartButton"),
   soundButton: document.getElementById("soundButton"), finalScore: document.getElementById("finalScore"),
   finalCombo: document.getElementById("finalCombo"), endTitle: document.getElementById("endTitle"),
@@ -14,12 +17,14 @@ const ui = {
 
 const WORLD = { width: 900, height: 600 };
 const NIGHT_DURATION = 75;
+const HISTORY_KEY = "lantern-keeper-history";
 const keys = new Set();
 const touchDirections = new Set();
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let state = "ready", score = 0, lives = 3, combo = 1, maxCombo = 1, comboTimer = 0, elapsed = 0;
 let spawnTimer = 0, dropTimer = 0, shake = 0, lastTime = performance.now(), audioContext = null;
 let best = Number(localStorage.getItem("lantern-keeper-best") || 0);
+let history = loadHistory();
 let soundEnabled = localStorage.getItem("lantern-keeper-sound") !== "off";
 let fireflies = [], raindrops = [], particles = [], ripples = [];
 
@@ -33,6 +38,58 @@ const skyline = [
 const random = (min, max) => min + Math.random() * (max - min);
 const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const formatScore = (value) => String(Math.max(0, Math.floor(value))).padStart(4, "0");
+
+function loadHistory() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+    return Array.isArray(stored) ? stored.filter(record => Number.isFinite(record.score) && record.playedAt) : [];
+  } catch {
+    return [];
+  }
+}
+
+function formatRecordTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return { date: "未知日期", time: "" };
+  return {
+    date: new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" }).format(date),
+    time: new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false }).format(date),
+  };
+}
+
+function renderLeaderboard() {
+  const ranked = [...history].sort((a, b) => b.score - a.score || new Date(b.playedAt) - new Date(a.playedAt)).slice(0, 10);
+  ui.leaderboard.replaceChildren();
+  ranked.forEach((record, index) => {
+    const item = document.createElement("li");
+    const rank = document.createElement("span");
+    const time = document.createElement("span");
+    const dateText = document.createElement("strong");
+    const detailText = document.createElement("span");
+    const recordScore = document.createElement("strong");
+    const formatted = formatRecordTime(record.playedAt);
+
+    rank.className = "rank";
+    rank.textContent = String(index + 1).padStart(2, "0");
+    time.className = "record-time";
+    dateText.textContent = formatted.date;
+    detailText.textContent = `${formatted.time} · 连击 ×${record.combo || 1}`;
+    time.append(dateText, detailText);
+    recordScore.className = "record-score";
+    recordScore.textContent = formatScore(record.score);
+    item.append(rank, time, recordScore);
+    ui.leaderboard.append(item);
+  });
+  ui.emptyLeaderboard.hidden = ranked.length > 0;
+  ui.homeBest.textContent = formatScore(best);
+}
+
+function saveRun() {
+  const record = { score: Math.floor(score), combo: maxCombo, playedAt: new Date().toISOString() };
+  history = [record, ...history].slice(0, 50);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  renderLeaderboard();
+}
 
 function setOverlay(element, visible) {
   element.classList.toggle("visible", visible);
@@ -56,8 +113,18 @@ function resetGame() {
 
 function startGame() {
   initializeAudio(); resetGame(); state = "playing";
-  setOverlay(ui.start, false); setOverlay(ui.pause, false); setOverlay(ui.end, false);
+  ui.homeScreen.hidden = true; ui.gameScreen.hidden = false;
+  setOverlay(ui.pause, false); setOverlay(ui.end, false);
   lastTime = performance.now();
+}
+
+function showHome() {
+  state = "home";
+  keys.clear(); touchDirections.clear();
+  setOverlay(ui.pause, false); setOverlay(ui.end, false);
+  ui.gameScreen.hidden = true; ui.homeScreen.hidden = false;
+  renderLeaderboard();
+  window.scrollTo({ top: 0, behavior: reducedMotion ? "auto" : "smooth" });
 }
 
 function togglePause(forceResume = false) {
@@ -71,6 +138,7 @@ function togglePause(forceResume = false) {
 
 function endGame() {
   state = "ended"; best = Math.max(best, score); localStorage.setItem("lantern-keeper-best", String(best));
+  saveRun();
   ui.finalScore.textContent = formatScore(score); ui.finalCombo.textContent = `×${maxCombo}`;
   ui.endTitle.textContent = lives > 0 ? "今夜的灯，很亮。" : "雨停了，灯还会亮。";
   updateHud(); setOverlay(ui.end, true); playTone("end");
@@ -97,7 +165,8 @@ function playTone(type) {
 
 function spawnFirefly() {
   const golden = Math.random() < .1;
-  fireflies.push({ x: random(56,844), y: random(90,508), radius: golden ? 11 : 8, phase: random(0,Math.PI*2), driftX: random(-15,15), driftY: random(-10,10), life: random(8,13), golden });
+  const lifetime = random(golden ? 6 : 5, golden ? 9 : 8);
+  fireflies.push({ x: random(56,844), y: random(90,508), radius: golden ? 11 : 8, phase: random(0,Math.PI*2), driftX: random(-15,15), driftY: random(-10,10), life: lifetime, maxLife: lifetime, golden });
 }
 
 function spawnRaindrop() {
@@ -200,9 +269,13 @@ function drawRipples() {
 
 function drawFireflies(time) {
   fireflies.forEach(fly => {
-    const pulse = .86+Math.sin(time*.006+fly.phase)*.14; ctx.save(); ctx.translate(fly.x,fly.y);
+    const remaining = Math.max(0, fly.life / fly.maxLife);
+    const urgency = remaining < .3 ? .52 + Math.sin(time * .025) * .35 : 1;
+    const pulse = (.86+Math.sin(time*.006+fly.phase)*.14) * urgency; ctx.save(); ctx.translate(fly.x,fly.y);
     const glow = ctx.createRadialGradient(0,0,1,0,0,fly.golden?34:25); glow.addColorStop(0,fly.golden?"rgba(255,245,174,.95)":"rgba(255,202,87,.9)"); glow.addColorStop(1,"rgba(255,202,87,0)");
     ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(0,0,(fly.golden?34:25)*pulse,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle = remaining < .3 ? "#e46851" : "rgba(245,240,229,.55)"; ctx.lineWidth = 2; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.arc(0,0,fly.golden?20:17,-Math.PI/2,-Math.PI/2+Math.PI*2*remaining); ctx.stroke();
     ctx.fillStyle = fly.golden?"#fff3a6":"#ffca57"; ctx.beginPath(); ctx.arc(0,0,fly.radius*pulse*.55,0,Math.PI*2); ctx.fill();
     ctx.strokeStyle = "rgba(245,240,229,.75)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(-5,-2,6,2.5,-.5,0,Math.PI*2); ctx.ellipse(5,-2,6,2.5,.5,0,Math.PI*2); ctx.stroke(); ctx.restore();
   });
@@ -259,7 +332,7 @@ document.querySelectorAll(".touch-controls button").forEach(button => {
   const release = event => { event.preventDefault(); touchDirections.delete(direction); };
   button.addEventListener("pointerdown",press); button.addEventListener("pointerup",release); button.addEventListener("pointercancel",release); button.addEventListener("pointerleave",release);
 });
-ui.startButton.addEventListener("click",startGame); ui.restartButton.addEventListener("click",startGame);
+ui.homeStartButton.addEventListener("click",startGame); ui.restartButton.addEventListener("click",startGame); ui.homeButton.addEventListener("click",showHome);
 ui.pauseButton.addEventListener("click",() => togglePause()); ui.resumeButton.addEventListener("click",() => togglePause(true));
 ui.soundButton.addEventListener("click",() => {
   soundEnabled = !soundEnabled; localStorage.setItem("lantern-keeper-sound",soundEnabled?"on":"off"); ui.soundButton.classList.toggle("muted",!soundEnabled);
@@ -267,5 +340,6 @@ ui.soundButton.addEventListener("click",() => {
 });
 document.addEventListener("visibilitychange",() => { if (document.hidden && state === "playing") togglePause(); });
 
+best = Math.max(best, ...history.map(record => record.score), 0);
 ui.best.textContent = formatScore(best); ui.soundButton.classList.toggle("muted",!soundEnabled); ui.soundButton.querySelector("span").textContent = soundEnabled?"♪":"×";
-updateHud(); requestAnimationFrame(frame);
+renderLeaderboard(); updateHud(); requestAnimationFrame(frame);

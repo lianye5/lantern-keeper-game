@@ -9,7 +9,43 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main class="game-shell">
+    <main id="homeScreen" class="home-screen">
+      <section class="home-intro">
+        <div class="home-brand">
+          <span class="brand-mark large" aria-hidden="true"><i></i></span>
+          <span>夜巡记录 · 07</span>
+        </div>
+        <p class="chapter">灯火守夜人</p>
+        <h1>雨落之前，<br />把灯火带回家。</h1>
+        <p class="home-copy">在七十五秒的夜巡中追上短暂发亮的萤火，避开冷雨，守住三枚灯芯。</p>
+
+        <ol class="rules" aria-label="游戏玩法">
+          <li><b>移动灯笼</b><span>使用方向键、WASD，或在画面中拖动。</span></li>
+          <li><b>收集灯光</b><span>普通萤火得 10 分，金色萤火得 50 分，连续收集可获得倍数奖励。</span></li>
+          <li><b>赶在熄灭前</b><span>萤火外圈是剩余时间；光圈耗尽后，它就会消失。</span></li>
+        </ol>
+
+        <button id="homeStartButton" class="primary-button home-start" type="button">
+          <span>开始值夜</span><b aria-hidden="true">→</b>
+        </button>
+      </section>
+
+      <section class="leaderboard" aria-labelledby="leaderboardTitle">
+        <header>
+          <div>
+            <span class="section-index">个人记录</span>
+            <h2 id="leaderboardTitle">灯火排行榜</h2>
+          </div>
+          <strong id="homeBestValue">0000</strong>
+        </header>
+        <div class="leaderboard-head" aria-hidden="true"><span>名次</span><span>时间</span><span>灯光</span></div>
+        <ol id="leaderboardList" class="leaderboard-list"></ol>
+        <p id="emptyLeaderboard" class="empty-leaderboard">还没有夜巡记录。第一盏灯，等你点亮。</p>
+        <p class="storage-note">记录仅保存在当前浏览器</p>
+      </section>
+    </main>
+
+    <main id="gameScreen" class="game-shell" hidden>
       <header class="topbar">
         <div class="brand" aria-label="灯火守夜人">
           <span class="brand-mark" aria-hidden="true"><i></i></span>
@@ -31,15 +67,6 @@
         <canvas id="gameCanvas" width="900" height="600" aria-label="灯火守夜人游戏区域"></canvas>
         <div class="weather" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
 
-        <div id="startOverlay" class="overlay visible">
-          <div class="overlay-panel">
-            <span class="chapter">第七夜</span>
-            <h2>雨落之前，<br />把灯火带回家。</h2>
-            <p>追逐萤火，避开冷雨。</p>
-            <button id="startButton" class="primary-button" type="button"><span>开始值夜</span><b aria-hidden="true">→</b></button>
-          </div>
-        </div>
-
         <div id="pauseOverlay" class="overlay compact" aria-hidden="true">
           <div class="overlay-panel">
             <span class="chapter">稍作停留</span>
@@ -56,7 +83,10 @@
               <div><span>本次灯火</span><strong id="finalScore">0000</strong></div>
               <div><span>最高连击</span><strong id="finalCombo">×1</strong></div>
             </div>
-            <button id="restartButton" class="primary-button" type="button"><span>再巡一夜</span><b aria-hidden="true">↻</b></button>
+            <div class="end-actions">
+              <button id="restartButton" class="primary-button" type="button"><span>再巡一夜</span><b aria-hidden="true">↻</b></button>
+              <button id="homeButton" class="secondary-button" type="button"><span aria-hidden="true">←</span> 回到首页</button>
+            </div>
           </div>
         </div>
 
