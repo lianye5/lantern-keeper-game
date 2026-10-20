@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#171a20" />
+    <meta name="description" content="灯火守夜人，一款温暖的街机收集小游戏。" />
+    <title>灯火守夜人</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="game-shell">
+      <header class="topbar">
+        <div class="brand" aria-label="灯火守夜人">
+          <span class="brand-mark" aria-hidden="true"><i></i></span>
+          <div><p>夜巡记录 · 07</p><h1>灯火守夜人</h1></div>
+        </div>
+        <div class="actions">
+          <button id="soundButton" class="icon-button" type="button" aria-label="关闭声音" title="声音"><span aria-hidden="true">♪</span></button>
+          <button id="pauseButton" class="icon-button" type="button" aria-label="暂停游戏" title="暂停"><span aria-hidden="true">Ⅱ</span></button>
+        </div>
+      </header>
+
+      <section class="hud" aria-label="游戏状态">
+        <div class="hud-block"><span>灯火</span><strong id="scoreValue">0000</strong></div>
+        <div class="hud-block center"><span>连击</span><strong id="comboValue">×1</strong></div>
+        <div class="hud-block right"><span>最高</span><strong id="bestValue">0000</strong></div>
+      </section>
+
+      <section class="game-frame" id="gameFrame">
+        <canvas id="gameCanvas" width="900" height="600" aria-label="灯火守夜人游戏区域"></canvas>
+        <div class="weather" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+
+        <div id="startOverlay" class="overlay visible">
+          <div class="overlay-panel">
+            <span class="chapter">第七夜</span>
+            <h2>雨落之前，<br />把灯火带回家。</h2>
+            <p>追逐萤火，避开冷雨。</p>
+            <button id="startButton" class="primary-button" type="button"><span>开始值夜</span><b aria-hidden="true">→</b></button>
+          </div>
+        </div>
+
+        <div id="pauseOverlay" class="overlay compact" aria-hidden="true">
+          <div class="overlay-panel">
+            <span class="chapter">稍作停留</span>
+            <h2>夜色正在等你。</h2>
+            <button id="resumeButton" class="primary-button" type="button"><span>继续值夜</span><b aria-hidden="true">→</b></button>
+          </div>
+        </div>
+
+        <div id="endOverlay" class="overlay compact" aria-hidden="true">
+          <div class="overlay-panel">
+            <span class="chapter">天光将至</span>
+            <h2 id="endTitle">今夜的灯，很亮。</h2>
+            <div class="result-row">
+              <div><span>本次灯火</span><strong id="finalScore">0000</strong></div>
+              <div><span>最高连击</span><strong id="finalCombo">×1</strong></div>
+            </div>
+            <button id="restartButton" class="primary-button" type="button"><span>再巡一夜</span><b aria-hidden="true">↻</b></button>
+          </div>
+        </div>
+
+        <div class="touch-controls" aria-label="移动控制">
+          <button data-direction="left" type="button" aria-label="向左移动">←</button>
+          <button data-direction="up" type="button" aria-label="向上移动">↑</button>
+          <button data-direction="down" type="button" aria-label="向下移动">↓</button>
+          <button data-direction="right" type="button" aria-label="向右移动">→</button>
+        </div>
+      </section>
+
+      <footer class="statusbar">
+        <div class="life" aria-label="剩余灯芯"><span>灯芯</span><div id="lifePips" class="life-pips"><i></i><i></i><i></i></div></div>
+        <div class="night-progress" aria-label="夜晚进度"><span>入夜</span><div class="progress-track"><i id="progressFill"></i></div><span>破晓</span></div>
+      </footer>
+    </main>
+    <script src="game.js"></script>
+  </body>
+</html>
