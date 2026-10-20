@@ -184,8 +184,9 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 .progress-track { flex: 1; height: 3px; overflow: hidden; background: rgba(245,240,229,.12); }
 .progress-track i { display: block; width: 0; height: 100%; background: var(--teal); transition: width 200ms linear; }
 
-@media (max-width: 720px) {
+@media (max-width: 720px), (max-height: 600px) and (pointer: coarse) {
   body { display: block; }
+  body.game-active { height: 100vh; height: 100dvh; overflow: hidden; overscroll-behavior: none; }
   .home-screen { grid-template-columns: 1fr; width: 100%; min-height: 100svh; border: 0; }
   .home-intro { padding: 34px 24px 42px; }
   .home-brand { margin-bottom: 36px; }
@@ -193,13 +194,23 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
   .home-copy { margin: 16px 0 24px; }
   .rules li { grid-template-columns: 30px 90px 1fr; padding: 10px 0; }
   .leaderboard { min-height: 520px; padding: 38px 24px; border-top: 1px solid var(--line); border-left: 0; }
-  .game-shell { width: 100%; max-width: 100vw; min-width: 0; padding: 14px; }
-  .topbar { min-height: 52px; margin-bottom: 12px; }
+  .game-shell {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100vw;
+    min-width: 0;
+    height: 100vh;
+    height: 100dvh;
+    padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  }
+  .topbar { flex: 0 0 48px; min-height: 48px; margin-bottom: 6px; }
   .brand-mark, .icon-button { width: 38px; height: 38px; }
-  .hud { min-height: 54px; padding: 0 14px; }
+  .hud { flex: 0 0 52px; min-height: 52px; padding: 0 14px; }
   .hud-block { min-width: 68px; }
   .hud-block strong { font-size: 18px; }
-  .game-frame, canvas { min-width: 0; }
+  .game-frame { flex: 1 1 auto; min-width: 0; min-height: 180px; aspect-ratio: auto; }
+  canvas { min-width: 0; }
   .overlay { padding: 16px 20px 22px; background: linear-gradient(0deg, rgba(18,21,27,.98), rgba(18,21,27,.18)); }
   .chapter { margin-bottom: 6px; }
   .overlay h2 { font-size: clamp(28px,8.5vw,40px); }
@@ -207,7 +218,7 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
   .primary-button { min-height: 42px; }
   .secondary-button { min-height: 42px; }
   .touch-controls { display: grid; }
-  .statusbar { min-height: 54px; padding: 0 14px; }
+  .statusbar { flex: 0 0 52px; min-height: 52px; padding: 0 14px; }
   .night-progress { width: 55%; }
 }
 @media (max-width: 420px) {
@@ -224,6 +235,16 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
   .end-actions .secondary-button { padding: 0 12px; }
   .rules li { grid-template-columns: 28px 1fr; }
   .rules li span { grid-column: 2; }
+}
+@media (max-height: 600px) and (pointer: coarse) {
+  .game-shell { padding: max(4px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); }
+  .topbar { flex-basis: 40px; min-height: 40px; margin-bottom: 4px; }
+  .brand-mark, .icon-button { width: 34px; height: 34px; }
+  .brand h1 { font-size: 21px; }
+  .brand p { display: none; }
+  .hud { flex-basis: 44px; min-height: 44px; }
+  .statusbar { flex-basis: 44px; min-height: 44px; }
+  .touch-controls { grid-template-columns: repeat(3,42px); grid-template-rows: repeat(2,42px); }
 }
 @media (hover: none) and (pointer: coarse) { .touch-controls { display: grid; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }

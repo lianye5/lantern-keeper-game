@@ -16,8 +16,11 @@ const ui = {
 };
 
 const WORLD = { width: 900, height: 600 };
+const DESKTOP_WORLD_WIDTH = 900;
+const MOBILE_WORLD_WIDTH = 450;
 const NIGHT_DURATION = 75;
 const HISTORY_KEY = "lantern-keeper-history";
+const MOBILE_LAYOUT_QUERY = "(max-width: 720px), (max-height: 600px) and (pointer: coarse)";
 const keys = new Set();
 const touchDirections = new Set();
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -38,6 +41,37 @@ const skyline = [
 const random = (min, max) => min + Math.random() * (max - min);
 const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const formatScore = (value) => String(Math.max(0, Math.floor(value))).padStart(4, "0");
+
+function resizeCanvas() {
+  const rect = canvas.getBoundingClientRect();
+  if (rect.width < 1 || rect.height < 1) return;
+
+  const previousWidth = WORLD.width;
+  const previousHeight = WORLD.height;
+  const mobileLayout = matchMedia(MOBILE_LAYOUT_QUERY).matches;
+  const logicalWidth = mobileLayout && rect.height >= rect.width ? MOBILE_WORLD_WIDTH : DESKTOP_WORLD_WIDTH;
+  const logicalHeight = logicalWidth * rect.height / rect.width;
+  const scaleX = logicalWidth / previousWidth;
+  const scaleY = logicalHeight / previousHeight;
+
+  WORLD.width = logicalWidth;
+  WORLD.height = logicalHeight;
+
+  if ((state === "playing" || state === "paused" || state === "ended") && previousWidth > 0 && previousHeight > 0) {
+    [player, ...fireflies, ...raindrops, ...particles, ...ripples].forEach(entity => {
+      entity.x *= scaleX;
+      entity.y *= scaleY;
+    });
+    player.targetX *= scaleX;
+    player.targetY *= scaleY;
+    player.trail.forEach(point => { point.x *= scaleX; point.y *= scaleY; });
+  }
+
+  const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.max(1, Math.round(logicalWidth * pixelRatio));
+  canvas.height = Math.max(1, Math.round(logicalHeight * pixelRatio));
+  ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+}
 
 function loadHistory() {
   try {
@@ -107,15 +141,24 @@ function updateHud() {
 function resetGame() {
   score = 0; lives = 3; combo = 1; maxCombo = 1; comboTimer = 0; elapsed = 0; spawnTimer = 0; dropTimer = 0; shake = 0;
   fireflies = []; raindrops = []; particles = []; ripples = [];
-  Object.assign(player, { x: 450, y: 455, targetX: 450, targetY: 455, invulnerable: 0, trail: [] });
+  const startX = WORLD.width / 2;
+  const startY = WORLD.height * .76;
+  Object.assign(player, { x: startX, y: startY, targetX: startX, targetY: startY, invulnerable: 0, trail: [] });
   updateHud();
 }
 
 function startGame() {
-  initializeAudio(); resetGame(); state = "playing";
+  requestMobileFullscreen(); initializeAudio(); state = "playing";
   ui.homeScreen.hidden = true; ui.gameScreen.hidden = false;
+  document.body.classList.add("game-active");
+  resizeCanvas(); resetGame();
   setOverlay(ui.pause, false); setOverlay(ui.end, false);
   lastTime = performance.now();
+}
+
+function requestMobileFullscreen() {
+  if (!matchMedia(MOBILE_LAYOUT_QUERY).matches || document.fullscreenElement || !document.documentElement.requestFullscreen) return;
+  document.documentElement.requestFullscreen({ navigationUI: "hide" }).catch(() => {});
 }
 
 function showHome() {
@@ -123,6 +166,7 @@ function showHome() {
   keys.clear(); touchDirections.clear();
   setOverlay(ui.pause, false); setOverlay(ui.end, false);
   ui.gameScreen.hidden = true; ui.homeScreen.hidden = false;
+  document.body.classList.remove("game-active");
   renderLeaderboard();
   window.scrollTo({ top: 0, behavior: reducedMotion ? "auto" : "smooth" });
 }
@@ -166,12 +210,12 @@ function playTone(type) {
 function spawnFirefly() {
   const golden = Math.random() < .1;
   const lifetime = random(golden ? 6 : 5, golden ? 9 : 8);
-  fireflies.push({ x: random(56,844), y: random(90,508), radius: golden ? 11 : 8, phase: random(0,Math.PI*2), driftX: random(-15,15), driftY: random(-10,10), life: lifetime, maxLife: lifetime, golden });
+  fireflies.push({ x: random(42,WORLD.width-42), y: random(72,WORLD.height-74), radius: golden ? 11 : 8, phase: random(0,Math.PI*2), driftX: random(-15,15), driftY: random(-10,10), life: lifetime, maxLife: lifetime, golden });
 }
 
 function spawnRaindrop() {
   const difficulty = 1 + elapsed / NIGHT_DURATION;
-  raindrops.push({ x: random(30,870), y: -30, radius: random(10,16), speed: random(230,340) * difficulty, drift: random(28,64) });
+  raindrops.push({ x: random(30,WORLD.width-30), y: -30, radius: random(10,16), speed: random(230,340) * difficulty, drift: random(28,64) });
 }
 
 function burst(x, y, color, count, speed = 90) {
@@ -196,7 +240,7 @@ function updatePlayer(dt) {
     const tx = player.targetX - player.x, ty = player.targetY - player.y, d = Math.hypot(tx,ty);
     if (d > 3) { const step = Math.min(player.speed * 1.25 * dt,d); player.x += tx/d*step; player.y += ty/d*step; }
   }
-  player.x = Math.max(34,Math.min(866,player.x)); player.y = Math.max(62,Math.min(550,player.y));
+  player.x = Math.max(34,Math.min(WORLD.width-34,player.x)); player.y = Math.max(62,Math.min(WORLD.height-50,player.y));
   player.invulnerable = Math.max(0,player.invulnerable-dt); player.trail.unshift({x:player.x,y:player.y});
   if (player.trail.length > 11) player.trail.pop();
 }
@@ -208,7 +252,7 @@ function updateEntities(dt) {
   if (dropTimer <= 0) { spawnRaindrop(); dropTimer = random(rainRate*.65,rainRate*1.2); }
   fireflies.forEach(fly => {
     fly.phase += dt*2.5; fly.x += (fly.driftX+Math.sin(fly.phase)*8)*dt; fly.y += (fly.driftY+Math.cos(fly.phase*.8)*6)*dt; fly.life -= dt;
-    if (fly.x < 28 || fly.x > 872) fly.driftX *= -1; if (fly.y < 65 || fly.y > 545) fly.driftY *= -1;
+    if (fly.x < 28 || fly.x > WORLD.width-28) fly.driftX *= -1; if (fly.y < 65 || fly.y > WORLD.height-55) fly.driftY *= -1;
   });
   raindrops.forEach(drop => { drop.x += drop.drift*dt; drop.y += drop.speed*dt; });
   particles.forEach(p => { p.x += p.vx*dt; p.y += p.vy*dt; p.vy += 55*dt; p.life -= dt; });
@@ -224,7 +268,7 @@ function updateEntities(dt) {
   }
   for (let i = raindrops.length-1; i >= 0; i--) {
     const drop = raindrops[i];
-    if (drop.y > 635) { ripples.push({x:drop.x,y:580,radius:4,life:.35,color:"#65c2b4"}); raindrops.splice(i,1); }
+    if (drop.y > WORLD.height+35) { ripples.push({x:drop.x,y:WORLD.height-20,radius:4,life:.35,color:"#65c2b4"}); raindrops.splice(i,1); }
     else if (player.invulnerable <= 0 && distance(player,drop) < player.radius+drop.radius-2) {
       lives--; combo = 1; comboTimer = 0; player.invulnerable = 1.25; shake = reducedMotion ? 0 : 8;
       burst(player.x,player.y,"#e46851",18,150); playTone("hit"); raindrops.splice(i,1); if (lives <= 0) endGame();
@@ -242,25 +286,29 @@ function update(dt) {
 }
 
 function drawBackground(time) {
-  const sky = ctx.createLinearGradient(0,0,0,600); sky.addColorStop(0,"#212938"); sky.addColorStop(.62,"#3d4850"); sky.addColorStop(1,"#8d655b");
-  ctx.fillStyle = sky; ctx.fillRect(0,0,900,600); ctx.save(); ctx.globalAlpha = .72;
+  const groundY = WORLD.height - 44;
+  const horizontalScale = WORLD.width / 900;
+  const sky = ctx.createLinearGradient(0,0,0,WORLD.height); sky.addColorStop(0,"#212938"); sky.addColorStop(.62,"#3d4850"); sky.addColorStop(1,"#8d655b");
+  ctx.fillStyle = sky; ctx.fillRect(0,0,WORLD.width,WORLD.height); ctx.save(); ctx.globalAlpha = .72;
   for (let i = 0; i < 20; i++) {
-    const x = (i*137+38)%900, y = 38+(i*83)%230, flicker = .55+Math.sin(time*.0015+i)*.18;
+    const x = (i*137+38)%WORLD.width, y = 38+(i*83)%Math.max(230,WORLD.height*.48), flicker = .55+Math.sin(time*.0015+i)*.18;
     ctx.fillStyle = i%3===0 ? `rgba(101,194,180,${flicker})` : `rgba(245,240,229,${flicker})`; ctx.fillRect(x,y,i%4===0?2:1,i%4===0?2:1);
   }
   ctx.restore();
-  const moonGlow = ctx.createRadialGradient(735,95,4,735,95,82); moonGlow.addColorStop(0,"rgba(255,232,171,.32)"); moonGlow.addColorStop(1,"rgba(255,232,171,0)");
-  ctx.fillStyle = moonGlow; ctx.fillRect(650,10,170,170); ctx.fillStyle = "#f4dfab"; ctx.beginPath(); ctx.arc(735,95,30,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle = "#26303d"; ctx.beginPath(); ctx.arc(746,84,30,0,Math.PI*2); ctx.fill();
+  const moonX = WORLD.width*.82, moonY = Math.min(105,WORLD.height*.16);
+  const moonGlow = ctx.createRadialGradient(moonX,moonY,4,moonX,moonY,82); moonGlow.addColorStop(0,"rgba(255,232,171,.32)"); moonGlow.addColorStop(1,"rgba(255,232,171,0)");
+  ctx.fillStyle = moonGlow; ctx.fillRect(moonX-85,moonY-85,170,170); ctx.fillStyle = "#f4dfab"; ctx.beginPath(); ctx.arc(moonX,moonY,30,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = "#26303d"; ctx.beginPath(); ctx.arc(moonX+11,moonY-11,30,0,Math.PI*2); ctx.fill();
   skyline.forEach((b,index) => {
-    const y = 558-b.h; ctx.fillStyle = index%2 ? "#25292e" : "#20242a"; ctx.fillRect(b.x,y,b.w,b.h+42);
-    if (b.roof) { ctx.beginPath(); ctx.moveTo(b.x-8,y); ctx.lineTo(b.x+b.w/2,y-b.roof); ctx.lineTo(b.x+b.w+8,y); ctx.closePath(); ctx.fill(); }
-    for (let wx=b.x+18; wx<b.x+b.w-10; wx+=30) for (let wy=y+25; wy<540; wy+=34) {
+    const x = b.x*horizontalScale, width = b.w*horizontalScale, y = groundY-b.h;
+    ctx.fillStyle = index%2 ? "#25292e" : "#20242a"; ctx.fillRect(x,y,width,b.h+44);
+    if (b.roof) { ctx.beginPath(); ctx.moveTo(x-8,y); ctx.lineTo(x+width/2,y-b.roof); ctx.lineTo(x+width+8,y); ctx.closePath(); ctx.fill(); }
+    for (let wx=x+12; wx<x+width-8; wx+=Math.max(18,30*horizontalScale)) for (let wy=y+25; wy<groundY-16; wy+=34) {
       ctx.fillStyle = (Math.floor(wx)+Math.floor(wy)+index)%4 ? "rgba(255,202,87,.35)" : "rgba(8,12,16,.6)"; ctx.fillRect(wx,wy,8,12);
     }
   });
-  ctx.fillStyle = "#171a20"; ctx.fillRect(0,556,900,44); ctx.strokeStyle = "rgba(101,194,180,.22)"; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(0,562); ctx.lineTo(900,562); ctx.stroke();
+  ctx.fillStyle = "#171a20"; ctx.fillRect(0,groundY,WORLD.width,44); ctx.strokeStyle = "rgba(101,194,180,.22)"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0,groundY+6); ctx.lineTo(WORLD.width,groundY+6); ctx.stroke();
 }
 
 function drawRipples() {
@@ -314,7 +362,7 @@ function frame(time) {
 }
 
 function setPointerTarget(event) {
-  const rect = canvas.getBoundingClientRect(); player.targetX = (event.clientX-rect.left)/rect.width*900; player.targetY = (event.clientY-rect.top)/rect.height*600; player.pointerActive = true;
+  const rect = canvas.getBoundingClientRect(); player.targetX = (event.clientX-rect.left)/rect.width*WORLD.width; player.targetY = (event.clientY-rect.top)/rect.height*WORLD.height; player.pointerActive = true;
 }
 
 addEventListener("keydown", event => {
@@ -339,6 +387,19 @@ ui.soundButton.addEventListener("click",() => {
   ui.soundButton.querySelector("span").textContent = soundEnabled?"♪":"×"; ui.soundButton.setAttribute("aria-label",soundEnabled?"关闭声音":"开启声音"); if (soundEnabled) playTone("collect");
 });
 document.addEventListener("visibilitychange",() => { if (document.hidden && state === "playing") togglePause(); });
+
+let resizeFrame = 0;
+function scheduleResize() {
+  cancelAnimationFrame(resizeFrame);
+  resizeFrame = requestAnimationFrame(() => {
+    resizeCanvas();
+    draw(performance.now());
+  });
+}
+addEventListener("resize", scheduleResize);
+addEventListener("orientationchange", scheduleResize);
+document.addEventListener("fullscreenchange", scheduleResize);
+if (window.visualViewport) window.visualViewport.addEventListener("resize", scheduleResize);
 
 best = Math.max(best, ...history.map(record => record.score), 0);
 ui.best.textContent = formatScore(best); ui.soundButton.classList.toggle("muted",!soundEnabled); ui.soundButton.querySelector("span").textContent = soundEnabled?"♪":"×";
