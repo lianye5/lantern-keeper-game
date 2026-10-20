@@ -22,7 +22,6 @@ const NIGHT_DURATION = 75;
 const HISTORY_KEY = "lantern-keeper-history";
 const MOBILE_LAYOUT_QUERY = "(max-width: 720px), (max-height: 600px) and (pointer: coarse)";
 const keys = new Set();
-const touchDirections = new Set();
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let state = "ready", score = 0, lives = 3, combo = 1, maxCombo = 1, comboTimer = 0, elapsed = 0;
 let spawnTimer = 0, dropTimer = 0, shake = 0, lastTime = performance.now(), audioContext = null;
@@ -163,7 +162,7 @@ function requestMobileFullscreen() {
 
 function showHome() {
   state = "home";
-  keys.clear(); touchDirections.clear();
+  keys.clear();
   setOverlay(ui.pause, false); setOverlay(ui.end, false);
   ui.gameScreen.hidden = true; ui.homeScreen.hidden = false;
   document.body.classList.remove("game-active");
@@ -228,10 +227,10 @@ function burst(x, y, color, count, speed = 90) {
 
 function updatePlayer(dt) {
   let dx = 0, dy = 0;
-  if (keys.has("ArrowLeft") || keys.has("KeyA") || touchDirections.has("left")) dx--;
-  if (keys.has("ArrowRight") || keys.has("KeyD") || touchDirections.has("right")) dx++;
-  if (keys.has("ArrowUp") || keys.has("KeyW") || touchDirections.has("up")) dy--;
-  if (keys.has("ArrowDown") || keys.has("KeyS") || touchDirections.has("down")) dy++;
+  if (keys.has("ArrowLeft") || keys.has("KeyA")) dx--;
+  if (keys.has("ArrowRight") || keys.has("KeyD")) dx++;
+  if (keys.has("ArrowUp") || keys.has("KeyW")) dy--;
+  if (keys.has("ArrowDown") || keys.has("KeyS")) dy++;
   if (dx || dy) {
     player.pointerActive = false;
     const length = Math.hypot(dx,dy) || 1;
@@ -371,15 +370,9 @@ addEventListener("keydown", event => {
   keys.add(event.code);
 });
 addEventListener("keyup", event => keys.delete(event.code));
-addEventListener("blur", () => { keys.clear(); touchDirections.clear(); if (state === "playing") togglePause(); });
+addEventListener("blur", () => { keys.clear(); if (state === "playing") togglePause(); });
 canvas.addEventListener("pointerdown", event => { canvas.setPointerCapture(event.pointerId); setPointerTarget(event); });
 canvas.addEventListener("pointermove", event => { if (event.buttons || event.pointerType === "touch") setPointerTarget(event); });
-document.querySelectorAll(".touch-controls button").forEach(button => {
-  const direction = button.dataset.direction;
-  const press = event => { event.preventDefault(); touchDirections.add(direction); player.pointerActive = false; };
-  const release = event => { event.preventDefault(); touchDirections.delete(direction); };
-  button.addEventListener("pointerdown",press); button.addEventListener("pointerup",release); button.addEventListener("pointercancel",release); button.addEventListener("pointerleave",release);
-});
 ui.homeStartButton.addEventListener("click",startGame); ui.restartButton.addEventListener("click",startGame); ui.homeButton.addEventListener("click",showHome);
 ui.pauseButton.addEventListener("click",() => togglePause()); ui.resumeButton.addEventListener("click",() => togglePause(true));
 ui.soundButton.addEventListener("click",() => {

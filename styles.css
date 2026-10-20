@@ -168,13 +168,6 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 .result-row { display: flex; justify-content: center; gap: 42px; margin: 24px 0 28px; }
 .result-row div { display: grid; gap: 4px; }
 .result-row strong { color: var(--amber); font: 700 26px Consolas, monospace; letter-spacing: 0; }
-.touch-controls { position: absolute; z-index: 4; right: 16px; bottom: 16px; display: none; grid-template-columns: repeat(3,46px); grid-template-rows: repeat(2,46px); gap: 5px; }
-.touch-controls button { border: 1px solid rgba(245,240,229,.34); border-radius: 50%; background: rgba(23,26,32,.58); color: var(--paper); font-size: 20px; backdrop-filter: blur(5px); touch-action: none; }
-.touch-controls button:active { background: rgba(255,202,87,.7); color: var(--ink); }
-.touch-controls [data-direction="up"] { grid-column: 2; }
-.touch-controls [data-direction="left"] { grid-column: 1; grid-row: 2; }
-.touch-controls [data-direction="down"] { grid-column: 2; grid-row: 2; }
-.touch-controls [data-direction="right"] { grid-column: 3; grid-row: 2; }
 .statusbar { justify-content: space-between; min-height: 58px; padding: 0 20px; border: 1px solid var(--line); border-top: 0; background: #1c2026; }
 .life, .night-progress { display: flex; align-items: center; gap: 10px; }
 .life-pips { display: flex; gap: 6px; }
@@ -217,7 +210,6 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
   .overlay p { margin: 6px 0 12px; font-size: 12px; }
   .primary-button { min-height: 42px; }
   .secondary-button { min-height: 42px; }
-  .touch-controls { display: grid; }
   .statusbar { flex: 0 0 52px; min-height: 52px; padding: 0 14px; }
   .night-progress { width: 55%; }
 }
@@ -244,7 +236,5 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
   .brand p { display: none; }
   .hud { flex-basis: 44px; min-height: 44px; }
   .statusbar { flex-basis: 44px; min-height: 44px; }
-  .touch-controls { grid-template-columns: repeat(3,42px); grid-template-rows: repeat(2,42px); }
 }
-@media (hover: none) and (pointer: coarse) { .touch-controls { display: grid; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
